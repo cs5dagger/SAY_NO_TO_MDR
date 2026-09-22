@@ -6,27 +6,37 @@
 <title>UPI QR Split</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
-  body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
-  input, button { font-size: 16px; padding: 10px; width: 100%; box-sizing: border-box; margin-top: 8px; }
+  * { box-sizing: border-box; }
+  body { font-family: sans-serif; max-width: 480px; width: 100%; margin: 0 auto; padding: 16px; }
+  .tagline { font-size: 14px; color: #555; text-align: center; margin-bottom: 16px; }
+  input, button { font-size: 16px; padding: 12px; width: 100%; margin-top: 8px; }
   button { cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #upiError { color: #c00; font-size: 13px; min-height: 18px; margin-top: 4px; }
   #qrList { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; justify-content: center; }
   .qrItem { text-align: center; }
+  .qrItem img, .qrItem canvas { max-width: 100%; height: auto; }
   #changeUpi { margin-top: 20px; background: none; border: none; color: #666; text-decoration: underline; }
+  #shareWhatsapp { margin-top: 12px; background: #25D366; color: #fff; border: none; border-radius: 6px; }
 </style>
 </head>
 <body>
 
+  <div class="tagline">Split Large UPI Payments Into Smaller Payments | Say No to MDR</div>
+
 <div id="setupScreen" style="display:none;">
   <h2>Enter your UPI ID</h2>
-  <input id="upiInput" placeholder="yourname@bank">
-  <button onclick="saveUpi()">Save</button>
+  <input id="upiInput" placeholder="yourname@bank" oninput="validateUpi()">
+  <div id="upiError"></div>
+  <button id="saveBtn" onclick="saveUpi()" disabled>Save</button>
 </div>
 
 <div id="mainScreen" style="display:none;">
   <h2>Collect Payment</h2>
-  <input id="amountInput" type="number" placeholder="Amount to collect" min="1">
+  <input id="amountInput" type="number" placeholder="Amount to collect" min="1" inputmode="numeric">
   <button onclick="generateQrs()">Generate QR</button>
   <div id="qrList"></div>
+  <button id="shareWhatsapp" onclick="shareOnWhatsapp()">Share on WhatsApp</button>
   <button id="changeUpi" onclick="changeUpi()">Change UPI ID</button>
 </div>
 
@@ -39,9 +49,19 @@ function init() {
   document.getElementById('mainScreen').style.display = upi ? 'block' : 'none';
 }
 
-function saveUpi() {
+const UPI_REGEX = /^[\w.+-]{2,256}@[a-zA-Z]{2,64}$/;
+
+function validateUpi() {
   const upi = document.getElementById('upiInput').value.trim();
-  if (!upi) return alert('Please enter a UPI ID');
+  const valid = UPI_REGEX.test(upi);
+  document.getElementById('saveBtn').disabled = !valid;
+  document.getElementById('upiError').textContent = (upi && !valid) ? 'Invalid UPI ID' : '';
+  return valid;
+}
+
+function saveUpi() {
+  if (!validateUpi()) return;
+  const upi = document.getElementById('upiInput').value.trim();
   localStorage.setItem(UPI_KEY, upi);
   init();
 }
@@ -49,7 +69,14 @@ function saveUpi() {
 function changeUpi() {
   localStorage.removeItem(UPI_KEY);
   document.getElementById('upiInput').value = '';
+  document.getElementById('upiError').textContent = '';
+  document.getElementById('saveBtn').disabled = true;
   init();
+}
+
+function shareOnWhatsapp() {
+  const url = `https://wa.me/?text=${encodeURIComponent(window.location.href)}`;
+  window.open(url, '_blank');
 }
 
 // ponytail: uneven last chunk (e.g. 5000 -> 1999,1999,1002), split evenly if that matters later
