@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UPI QR Split</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  body { font-family: sans-serif; max-width: 480px; margin: 40px auto; padding: 0 16px; }
+  input, button { font-size: 16px; padding: 10px; width: 100%; box-sizing: border-box; margin-top: 8px; }
+  button { cursor: pointer; }
+  #qrList { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; justify-content: center; }
+  .qrItem { text-align: center; }
+  #changeUpi { margin-top: 20px; background: none; border: none; color: #666; text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div id="setupScreen" style="display:none;">
+  <h2>Enter your UPI ID</h2>
+  <input id="upiInput" placeholder="yourname@bank">
+  <button onclick="saveUpi()">Save</button>
+</div>
+
+<div id="mainScreen" style="display:none;">
+  <h2>Collect Payment</h2>
+  <input id="amountInput" type="number" placeholder="Amount to collect" min="1">
+  <button onclick="generateQrs()">Generate QR</button>
+  <div id="qrList"></div>
+  <button id="changeUpi" onclick="changeUpi()">Change UPI ID</button>
+</div>
+
+<script>
+const UPI_KEY = 'upiId';
+
+function init() {
+  const upi = localStorage.getItem(UPI_KEY);
+  document.getElementById('setupScreen').style.display = upi ? 'none' : 'block';
+  document.getElementById('mainScreen').style.display = upi ? 'block' : 'none';
+}
+
+function saveUpi() {
+  const upi = document.getElementById('upiInput').value.trim();
+  if (!upi) return alert('Please enter a UPI ID');
+  localStorage.setItem(UPI_KEY, upi);
+  init();
+}
+
+function changeUpi() {
+  localStorage.removeItem(UPI_KEY);
+  document.getElementById('upiInput').value = '';
+  init();
+}
+
+// ponytail: uneven last chunk (e.g. 5000 -> 1999,1999,1002), split evenly if that matters later
+function splitAmount(total) {
+  const chunks = [];
+  let remaining = total;
+  while (remaining >= 2000) {
+    chunks.push(1999);
+    remaining -= 1999;
+  }
+  if (remaining > 0) chunks.push(remaining);
+  return chunks;
+}
+
+function generateQrs() {
+  const amount = Number(document.getElementById('amountInput').value);
+  if (!amount || amount <= 0) return alert('Enter a valid amount');
+
+  const upi = localStorage.getItem(UPI_KEY);
+  const chunks = splitAmount(amount);
+
+  const list = document.getElementById('qrList');
+  list.innerHTML = '';
+  chunks.forEach((chunk, i) => {
+    const item = document.createElement('div');
+    item.className = 'qrItem';
+    const qrDiv = document.createElement('div');
+    item.appendChild(qrDiv);
+    const label = document.createElement('div');
+    label.textContent = `₹${chunk}`;
+    item.appendChild(label);
+    list.appendChild(item);
+
+    const upiUri = `upi://pay?pa=${encodeURIComponent(upi)}&am=${chunk}&cu=INR`;
+    new QRCode(qrDiv, { text: upiUri, width: 160, height: 160 });
+  });
+}
+
+init();
+</script>
+</body>
+</html>
